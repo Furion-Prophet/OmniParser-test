@@ -57,8 +57,8 @@ def process(
     # parsed_content_list = '\n'.join([f'icon {i}: ' + str(v) for i,v in enumerate(parsed_content_list)])
     # parsed_content_list = str(parsed_content_list)
     llm_input_text = format_elements_for_llm(parsed_content_list)
-    print(f'parsed_content_list:{parsed_content_list}')
-    return image, str(parsed_content_list)
+    # print(f'parsed_content_list:{parsed_content_list}')
+    return image, llm_input_text
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 # 请根据你代理软件的实际端口修改 7890

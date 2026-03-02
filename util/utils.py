@@ -29,12 +29,13 @@ import supervision as sv
 import torchvision.transforms as T
 from util.box_annotator import BoxAnnotator
 
+# 内存低的机器，都使用cpu,降低分析速度，以提高稳定性
 def get_device():
-  if torch.cuda.is_available():
-    return "cuda"  # 有 NVIDIA 显卡
-  elif torch.backends.mps.is_available():
-    return "mps"   # 是 M 系列芯片的 Mac
-  else:
+  # if torch.cuda.is_available():
+  #   return "cuda"  # 有 NVIDIA 显卡
+  # elif torch.backends.mps.is_available():
+  #   return "mps"   # 图形处理器，速度最快，容易崩溃
+  # else:
     return "cpu"
   
 default_device = get_device()
@@ -59,7 +60,7 @@ def get_caption_model_processor(model_name, model_name_or_path="Salesforce/blip2
             model = AutoModelForCausalLM.from_pretrained(model_name_or_path, trust_remote_code=True, local_files_only=True)
         else:
             model = AutoModelForCausalLM.from_pretrained(model_name_or_path, torch_dtype=torch.float16, trust_remote_code=True)
-    return {'model': model.to(device), 'processor': processor}
+    return {'model': model.to(device).float(), 'processor': processor}
 
 
 def get_yolo_model(model_path):
@@ -107,7 +108,7 @@ def get_parsed_content_icon(filtered_boxes, starting_idx, image_source, caption_
             inputs = processor(images=batch, text=[prompt]*len(batch), return_tensors="pt").to(device=device)
         
         inputs = {k: v.float() if k == "pixel_values" else v for k, v in inputs.items()}
-        inputs = {k: v.to(device) for k, v in inputs.items()}
+        # inputs = {k: v.to(device) for k, v in inputs.items()}
             
         if 'florence' in model.config.name_or_path:
             generated_ids = model.generate(input_ids=inputs["input_ids"],pixel_values=inputs["pixel_values"],max_new_tokens=20,num_beams=1, do_sample=False)
