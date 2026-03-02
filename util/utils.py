@@ -40,7 +40,7 @@ def get_device():
   
 default_device = get_device()
 
-def get_caption_model_processor(model_name, model_name_or_path="Salesforce/blip2-opt-2.7b", device=None):
+def get_caption_model_processor(model_name, model_name_or_path="Salesforce/blip2-opt-2.7b", device=None, processor_model_path=None):
     if not device: device = default_device
     if model_name == "blip2":
         from transformers import Blip2Processor, Blip2ForConditionalGeneration
@@ -57,7 +57,7 @@ def get_caption_model_processor(model_name, model_name_or_path="Salesforce/blip2
         from transformers import AutoProcessor, AutoModelForCausalLM 
         processor = AutoProcessor.from_pretrained(model_name_or_path, trust_remote_code=True, local_files_only=True)
         if device == 'cpu':
-            model = AutoModelForCausalLM.from_pretrained(model_name_or_path, trust_remote_code=True, local_files_only=True)
+            model = AutoModelForCausalLM.from_pretrained(processor_model_path, trust_remote_code=True, local_files_only=True)
         else:
             model = AutoModelForCausalLM.from_pretrained(model_name_or_path, torch_dtype=torch.float16, trust_remote_code=True)
     return {'model': model.to(device).float(), 'processor': processor}
