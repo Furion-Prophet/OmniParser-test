@@ -9,7 +9,7 @@ import httpx
 import socket
 
 import base64, os
-from util.utils import check_ocr_box, get_yolo_model, get_caption_model_processor, get_som_labeled_img, format_elements_for_llm, get_device
+from util.utils import check_ocr_box, get_yolo_model, get_caption_model_processor, get_som_labeled_img, format_elements_for_llm, get_device, scale_img
 
 # torch.set_num_threads(4)
 
@@ -17,16 +17,7 @@ yolo_model = get_yolo_model(model_path='weights/icon_detect/model.pt')
 caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="weights/florence2", processor_model_path="weights/icon_caption_florence")
 # caption_model_processor = get_caption_model_processor(model_name="blip2", model_name_or_path="weights/icon_caption_blip2")
 
-MARKDOWN = """
-# OmniParser for Pure Vision Based General GUI Agent 🔥
-<div>
-    <a href="https://arxiv.org/pdf/2408.00203">
-        <img src="https://img.shields.io/badge/arXiv-2408.00203-b31b1b.svg" alt="Arxiv" style="display:inline-block;">
-    </a>
-</div>
-
-OmniParser is a screen parsing tool to convert general GUI screen to structured elements. 
-"""
+MARKDOWN = """"""
 
 DEVICE = torch.device(get_device())
 
@@ -38,7 +29,8 @@ def process(
     box_threshold,
     iou_threshold,
     use_paddleocr,
-    imgsz
+    imgsz,
+    use_box_position
 ) -> Optional[Image.Image]:
 
     box_overlay_ratio = image_input.size[0] / 3200
@@ -56,8 +48,9 @@ def process(
     image = Image.open(io.BytesIO(base64.b64decode(dino_labled_img)))
     # parsed_content_list = '\n'.join([f'icon {i}: ' + str(v) for i,v in enumerate(parsed_content_list)])
     # parsed_content_list = str(parsed_content_list)
-    llm_input_text = format_elements_for_llm(parsed_content_list)
+    llm_input_text = format_elements_for_llm(parsed_content_list, use_box_position)
     # print(f'parsed_content_list:{parsed_content_list}')
+    image = scale_img(image)
     return image, llm_input_text
 
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
@@ -96,12 +89,14 @@ with gr.Blocks() as demo:
           type='pil', label='Upload image')
       # set the threshold for removing the bounding boxes with low confidence, default is 0.05
       box_threshold_component = gr.Slider(
-          label='Box Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.05)
+          label='检测阈值(UI简洁，设高一点；复杂的后台系统，设低一点)', minimum=0.01, maximum=1.0, step=0.01, value=0.05)
       # set the threshold for removing the bounding boxes with large overlap, default is 0.1
       iou_threshold_component = gr.Slider(
-          label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.1)
+          label='交并比阈值(重叠程度,调低重叠度小，调高允许元素紧密排列重叠)', minimum=0.01, maximum=1.0, step=0.01, value=0.1)
       use_paddleocr_component = gr.Checkbox(
-          label='Use PaddleOCR', value=True)
+          label='是否使用PaddleOCR模型', value=True)
+      use_box_position_component = gr.Checkbox(
+          label='元素列表是否需要坐标', value=False)
       imgsz_component = gr.Slider(
           label='Icon Detect Image Size', minimum=640, maximum=1920, step=32, value=640)
       submit_button_component = gr.Button(
@@ -117,7 +112,8 @@ with gr.Blocks() as demo:
       box_threshold_component,
       iou_threshold_component,
       use_paddleocr_component,
-      imgsz_component
+      imgsz_component,
+      use_box_position_component
     ],
     outputs=[image_output_component, text_output_component]
   )

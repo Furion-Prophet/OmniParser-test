@@ -558,11 +558,24 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img = True, out
             bb = [get_xyxy(item) for item in coord]
     return text, bb
   
-def format_elements_for_llm(parsed_content_list):
-  prompt_text = "Parsed screen elements:\n"
+def format_elements_for_llm(parsed_content_list, use_box_position=False):
+  prompt_text = "数据格式为: ID 标识: [类型] 文本内容|语义化图标 [ymin,xmin,ymax,xmax]\n"
   for i, element in enumerate(parsed_content_list):
     # element 格式通常是: {"type": "text/icon", "content": "xxx", "interactivity": True}
     ele_type = element.get('type', 'element')
     content = element.get('content', 'no description')
-    prompt_text += f"ID {i}: [{ele_type}] {content}\n"
+    bbox = ''
+    if (use_box_position):
+      bbox = element.get('bbox', 'bbox坐标')
+    prompt_text += f"ID {i}: [{ele_type}] {content} {bbox}\n"
+  print(f'use_box_position:{use_box_position}')
   return prompt_text
+
+def scale_img(image_input):
+  img_array = np.array(image_input)
+  h, w = img_array.shape[:2]
+  scale = 960 / max(h, w)
+  new_w = int(w * scale)
+  new_h = int(h * scale)
+  resized_img = cv2.resize(img_array, (new_w, new_h), interpolation=cv2.INTER_AREA)
+  return resized_img
